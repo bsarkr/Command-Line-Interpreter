@@ -10,7 +10,7 @@ FILES INCLUDED:
 
 1. shell.py       - Main shell program with core loop (265+ lines)
 2. signals_mod.py - Signal handling module (120+ lines)  
-3. utils.py       - Utility functions and integration stubs (260+ lines)
+3. utils.py       - Utility functions, parsing, and command execution (260+ lines)
 4. test_shell.py  - Comprehensive test suite (380+ lines)
 5. README.txt     - This instruction file
 
@@ -25,7 +25,7 @@ STEP 1: Test Your Implementation
 STEP 2: Run the Shell
     python3 shell.py
 
-STEP 3: Test Basic Commands
+STEP 3: Try Basic Commands
     pwd
     help
     cd ~
@@ -38,121 +38,188 @@ STEP 3: Test Basic Commands
 BILASH'S COMPLETED RESPONSIBILITIES:
 ===================================
 
-✓ Core shell loop with prompt display and input handling
-✓ Signal handling for SIGINT (Ctrl+C), SIGTSTP (Ctrl+Z), SIGCHLD
+✓ Core shell loop with prompt display and input handling  
+✓ Signal handling for SIGINT (Ctrl+C), SIGTSTP (Ctrl+Z), SIGCHLD  
 ✓ Background process management framework  
-✓ Shell state management and cleanup
-✓ Built-in commands: pwd, cd, help, jobs, history, echo, export, unset
-✓ Integration points for Max's parser/executor modules
-✓ Integration points for Jake's built-in/features modules
-✓ Comprehensive test suite with 11 test cases
-✓ Professional error handling and user experience
+✓ Shell state management and cleanup  
+✓ Built-in commands: pwd, cd, help, jobs, history, echo, export, unset  
+✓ Integration points for Max's parser/executor  
+✓ Integration points for Jake's built-in/features modules  
+✓ Comprehensive test suite with 11 test cases  
+✓ Professional error handling and user experience  
 
 TEAM INTEGRATION POINTS:
 =======================
 
-FOR MAX (Parser & Executor):
-Replace these functions in utils.py:
-• parse_command(input_str) -> List[str]
-  Current: Basic shlex.split() implementation
-  Needed: Robust parser with quote handling, escaping, variable expansion
+FOR MAX (Parser & Executor):  
+Completed and integrated in utils.py:
 
-• execute_command(args, background=False) -> int  
-  Current: Debug stub that prints what would be executed
-  Needed: Fork/exec or subprocess implementation with proper process management
+• parse_command(input_str) → List[str]  
+  Handles:
+  - Quotes  
+  - Escaping  
+  - Comments (#)  
+  - Variable expansion ($VAR, ${VAR}, $?)  
+  - Tilde expansion (~, ~user)  
+  - Preserves operators (> < >> | &)  
+
+• execute_command(args, background=False) → int  
+  Fully implemented using:
+  - fork()  
+  - execvp()  
+  - waitpid()  
+  - Background job registration  
+  - Proper exit status propagation  
 
 FOR JAKE (Built-ins & Features):
-Enhance these functions in utils.py:
-• is_builtin_command(command) -> bool
-  Current: Basic set of built-ins
-  Needed: Expanded command set including file operations
-
-• execute_builtin(args) -> int
-  Current: Basic implementations of core commands
-  Needed: Enhanced features, I/O redirection, piping support
-
-Add new functionality:
-• I/O redirection (>, <, >>, |)
-• Command substitution ($(...))
-• Variable expansion ($VAR)
-• Alias support
-• Advanced job control
+• is_builtin_command(command)  
+• execute_builtin(args)  
+• I/O redirection (>, <, >>)  
+• Piping (|)  
+• Alias support  
+• Advanced job control  
 
 PYTHON ADVANTAGES OVER C++:
 ===========================
 
-✓ Cleaner, more readable code
-✓ Automatic memory management (no memory leaks)
-✓ Rich standard library (os, signal, subprocess, etc.)
-✓ Easier string handling and parsing
-✓ Better exception handling
-✓ Faster development and debugging
-✓ Cross-platform compatibility
-✓ No compilation step required
+✓ Cleaner, more readable code  
+✓ Automatic memory management  
+✓ Rich standard library: os, signal, subprocess  
+✓ Easier parsing with shlex  
+✓ Exception handling  
+✓ Faster development / debugging  
+✓ Cross-platform compatibility  
+✓ No compilation required  
 
 ARCHITECTURE HIGHLIGHTS:
 =======================
 
-• Modular design with clean separation:
-  - shell.py: Main program and shell loop
-  - signals_mod.py: Signal handling and process management
-  - utils.py: Utilities and integration points
-  - test_shell.py: Comprehensive testing
+• Modular design:  
+  - shell.py: Main shell loop  
+  - utils.py: Parsing, execution, built-ins  
+  - signals_mod.py: Signal handling + background jobs  
+  - test_shell.py: Automated testing  
 
-• Professional Python practices:
-  - Type hints for better code documentation
-  - Docstrings for all functions
-  - PEP 8 style compliance
-  - Exception handling with specific error types
-  - Context managers and proper resource cleanup
-
-• OS concepts demonstrated:
-  - Process management with signal handling
-  - Inter-process communication
-  - Environment variable management
-  - File system operations
-  - Signal-safe programming practices
+• Professional Python practices:  
+  - Type hints  
+  - Docstrings  
+  - PEP 8 style  
+  - Error handling  
+  - Clean separation of concerns  
 
 BUILT-IN COMMANDS IMPLEMENTED:
 =============================
 
-• pwd - Print working directory
-• cd [dir] - Change directory (supports ~, environment variables)
-• help - Show comprehensive help
-• jobs - List background processes
-• history - Show command history (last 20 commands)
-• echo [text] - Print text with argument support
-• export VAR=value - Set environment variables
-• unset VAR - Remove environment variables
-• exit [code] - Exit with optional status code
+• pwd  
+• cd [dir]  
+• help  
+• jobs  
+• history  
+• echo  
+• export VAR=value  
+• unset VAR  
+• exit [code]  
 
-RUNNING THE SHELL:
-=================
+==========================================
+INTERACTIVE TESTING & FEATURE DEMONSTRATION
+==========================================
 
-Example session:
-    $ python3 shell.py
-    === Custom Shell v1.0 (Python) ===
-    Team: Bilash, Max, Jake
-    Type 'help' for commands or 'exit' to quit.
-    
-    root@hostname:/path$ pwd
-    /current/directory
-    root@hostname:/path$ echo "Hello World"
-    Hello World
-    root@hostname:/path$ export MY_VAR=test
-    root@hostname:/path$ cd ~
-    root@hostname:~$ jobs
-    No active background jobs.
-    root@hostname:~$ help
-    [Shows comprehensive help]
-    root@hostname:~$ exit 0
-    Cleaning up shell resources...
-    Shell exited with status: 0
+The following examples allow you to manually test shell behavior,
+parsing logic, variable expansion, background processes, and OS-level
+execution.
+
+------------------------------------------
+1. BASIC NAVIGATION & BUILT-INS
+------------------------------------------
+pwd  
+cd ~  
+cd Desktop  
+pwd  
+history  
+help  
+
+------------------------------------------
+2. EXTERNAL COMMAND EXECUTION
+------------------------------------------
+ls  
+ls -la  
+echo Hello World  
+
+------------------------------------------
+3. QUOTE & WHITESPACE PARSING
+------------------------------------------
+echo "hello world"  
+echo   spaced    out   tokens  
+echo "multi-word argument" test  
+
+------------------------------------------
+4. VARIABLE EXPANSION
+------------------------------------------
+export NAME=Max  
+echo $NAME  
+echo $HOME  
+echo $?  
+unset NAME  
+
+------------------------------------------
+5. TILDE EXPANSION
+------------------------------------------
+echo ~  
+echo ~/Documents  
+cd ~  
+pwd  
+
+------------------------------------------
+6. COMMENT HANDLING
+------------------------------------------
+echo hello world   # ignored by parser  
+echo "a # b"       # # inside quotes preserved  
+
+------------------------------------------
+7. BACKGROUND JOBS
+------------------------------------------
+sleep 5 &  
+jobs       # should show process as Running  
+
+After 5 seconds:  
+[Process XXXX] Done (exit status: 0)
+
+------------------------------------------
+8. SIGNAL HANDLING (FOREGROUND)
+------------------------------------------
+sleep 100  
+(Press Ctrl+C)  
+
+Output:
+Use 'exit' to quit the shell.
+
+Shell remains active.
+
+------------------------------------------
+9. ERROR HANDLING
+------------------------------------------
+nosuchcommand  
+→ shell: error: nosuchcommand: command not found  
+
+cd /nonexistent  
+→ shell: error: cd: [Errno 2] No such file or directory  
+
+------------------------------------------
+10. EXIT BEHAVIOR
+------------------------------------------
+exit  
+exit 0  
+exit 5  
+
+Shell prints cleanup messages and exits with specified status.  
 
 PROJECT STATUS:
 ==============
 
-COMPLETE: ✓ Core shell foundation (1000+ lines of Python)
-TESTED:   ✓ 11 comprehensive tests all passing
-READY:    ✓ Clear integration points for teammates
-NEXT:     → Team development and feature expansion
+✓ Core shell foundation  
+✓ Max’s parser and executor fully integrated  
+✓ Jake’s built-in enhancements ready for extension  
+✓ All tests pass (11/11)  
+✓ Ready for final submission and presentation  
+
+

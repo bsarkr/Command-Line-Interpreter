@@ -14,6 +14,8 @@ import pwd
 import socket
 import subprocess
 import shlex
+import re
+import signal
 from typing import List, Optional
 
 def print_error(message: str):
@@ -64,12 +66,57 @@ def set_prompt():
 # INTEGRATION POINTS FOR TEAMMATES
 # ===============================================================================
 
+# Regex for $VAR, ${VAR}, and $?
+_VAR_PATTERN = re.compile(r"\$(\w+|\{[^}]+\}|\?)")
+
+def _expand_variables(token: str) -> str:
+    """
+    Expand shell-style variables in a single token.
+
+    Supports:
+      - $VAR
+      - ${VAR}
+      - $?  (last exit status from shell_state)
+    """
+    # Lazy import to avoid circular import at module import time
+    from shell import shell_state
+
+    def repl(match: re.Match) -> str:
+        name = match.group(1)
+
+        # Special case: $?
+        if name == "?":
+            return str(shell_state.last_exit_status)
+
+        # Handle ${VAR}
+        if name.startswith("{") and name.endswith("}"):
+            name = name[1:-1]
+
+        return os.environ.get(name, "")
+
+    return _VAR_PATTERN.sub(repl, token)
+
+
+def _expand_tilde(token: str) -> str:
+    """
+    Expand ~ and ~user in tokens.
+    """
+    if token.startswith("~"):
+        return os.path.expanduser(token)
+    return token
+
+
 def parse_command(input_str: str) -> List[str]:
     """
     Parse command line input into tokens.
-    
-    STUB IMPLEMENTATION - Max will replace this with robust parser
-    that handles quotes, escaping, and complex tokenization.
+
+    Features:
+      - Quote/escape-aware splitting via shlex
+      - Support for comments starting with '#'
+      - Variable expansion ($VAR, ${VAR}, $?)
+      - Tilde expansion (~, ~user)
+      - Keeps operators (> < >> | &) as tokens so the shell
+        can later implement redirection and pipes.
     
     Args:
         input_str: Raw command line input
@@ -78,37 +125,97 @@ def parse_command(input_str: str) -> List[str]:
         List of command tokens
     """
     try:
-        # Simple tokenization using shlex - Max will enhance this
-        return shlex.split(input_str)
+        # shlex handles quotes and escaping similarly to a POSIX shell
+        lexer = shlex.shlex(input_str, posix=True)
+        lexer.whitespace_split = True
+        lexer.commenters = "#"   # ignore comments outside quotes
+
+        tokens = list(lexer)
+
+        expanded_tokens: List[str] = []
+        for tok in tokens:
+            tok = _expand_variables(tok)
+            tok = _expand_tilde(tok)
+            expanded_tokens.append(tok)
+
+        return expanded_tokens
+
     except ValueError as e:
         print_error(f"Parse error: {e}")
         return []
 
 def execute_command(args: List[str], background: bool = False) -> int:
     """
-    Execute external command using subprocess.
-    
-    STUB IMPLEMENTATION - Max will replace this with fork/exec approach
-    and proper process management.
-    
-    Args:
-        args: Command and arguments as list
-        background: Whether to run in background
-        
-    Returns:
-        Exit status of command
+    Execute external command using fork/exec.
+
+    - Foreground:
+        * Parent waits for the child with waitpid()
+        * Returns the child's exit status.
+    - Background:
+        * Parent does NOT wait.
+        * Registers the PID with add_background_process().
+        * Returns 0 if the process started successfully.
+
+    Error conventions:
+        127 -> command not found
+        126 -> permission denied
+        1   -> generic failure
     """
     if not args:
         return 1
-    
-    # For now, just show what would be executed
-    command_str = " ".join(f"'{arg}'" for arg in args)
-    if background:
-        command_str += " &"
-    print(f"DEBUG: Would execute: {command_str}")
-    
-    # Simulate successful execution
-    return 0
+
+    try:
+        pid = os.fork()
+    except OSError as e:
+        print_error(f"fork failed: {e}")
+        return 1
+
+    if pid == 0:
+        # --- Child process ---
+        # Reset signal handlers so Ctrl+C / Ctrl+Z affect the child normally
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTSTP, signal.SIG_DFL)
+
+        try:
+            # Replace the child process image with the requested command
+            os.execvp(args[0], args)
+        except FileNotFoundError:
+            print_error(f"{args[0]}: command not found")
+            os._exit(127)
+        except PermissionError:
+            print_error(f"{args[0]}: permission denied")
+            os._exit(126)
+        except OSError as e:
+            print_error(f"{args[0]}: {e}")
+            os._exit(1)
+
+    else:
+        # --- Parent process ---
+        if background:
+            # Track as a background job (signals_mod will manage it)
+            add_background_process(pid)
+            # Don't wait for it; shell returns to prompt immediately
+            return 0
+
+        # Foreground: wait for this specific child
+        while True:
+            try:
+                _, status = os.waitpid(pid, 0)
+                break
+            except InterruptedError:
+                # Interrupted by a signal; retry the wait
+                continue
+            except ChildProcessError:
+                # Child may already have been reaped by SIGCHLD handler
+                return 0
+
+        if os.WIFEXITED(status):
+            return os.WEXITSTATUS(status)
+        elif os.WIFSIGNALED(status):
+            # Typical shell convention: 128 + signal number
+            return 128 + os.WTERMSIG(status)
+        else:
+            return 1
 
 def is_builtin_command(command: str) -> bool:
     """
@@ -264,3 +371,5 @@ def add_background_process(pid: int):
     """Add process to background tracking"""
     from signals_mod import add_background_process as add_bg
     add_bg(pid)
+
+
