@@ -231,11 +231,11 @@ def is_builtin_command(command: str) -> bool:
     """
     builtins = {
         "exit", "cd", "pwd", "help", "jobs", "history",
-        "echo", "export", "unset", "alias"  # Jake will implement these
+        "echo", "export", "unset", "alias"  # Jake
     }
     return command in builtins
 
-def execute_builtin(args: List[str]) -> int:
+def execute_builtin(args: List[str], shell_state=None) -> int:
     """
     Execute built-in shell command.
     
@@ -251,30 +251,46 @@ def execute_builtin(args: List[str]) -> int:
         return 1
     
     command = args[0]
-    from shell import shell_state
     
     if command == "pwd":
         print(get_current_directory())
         return 0
         
-    elif command == "cd":
-        # Change directory
+    elif command == "cd": # Change directory
+        if len(args) > 2:
+            print_error("cd: too many arguments")
+            return 1
         if len(args) > 1:
             target_dir = args[1]
+
+            if target_dir == "-":
+                if hasattr(shell_state, "previous_directory") and shell_state.previous_directory:
+                    target_dir = shell_state.previous_directory
+                    print(target_dir)
+                else:
+                    print_error("cd: OLDPWD not set")
+                    return 1
         else:
             # No argument, go to home directory
             target_dir = os.path.expanduser("~")
         
         try:
-            # Expand ~ and environment variables
+            if shell_state:
+                shell_state.previous_directory = shell_state.current_directory
+
             target_dir = os.path.expanduser(target_dir)
             target_dir = os.path.expandvars(target_dir)
             
             os.chdir(target_dir)
-            shell_state.current_directory = get_current_directory()
+            if shell_state:
+                shell_state.current_directory = get_current_directory()
+
             return 0
         except OSError as e:
-            print_error(f"cd: {e}")
+            if e.errno == 2:
+                print_error(f"cd: no such file or directory: {target_dir}")
+            else:
+                print_error(f"cd: {e}")
             return 1
             
     elif command == "help":
@@ -291,25 +307,43 @@ def execute_builtin(args: List[str]) -> int:
         return 0
         
     elif command == "echo":
-        # Simple echo implementation
-        if len(args) > 1:
-            print(" ".join(args[1:]))
+        echo_args = args[1:]
+        newline = True
+
+        if echo_args and echo_args[0] == "-n":
+            newline = False
+            echo_args = echo_args[1:]
+        
+        output = " ".join(echo_args) if echo_args else ""
+
+        if newline:
+            print(output)
         else:
-            print()
+            print(output, end="")
+
         return 0
         
     elif command == "export":
-        # Simple environment variable setting - Jake will enhance
-        if len(args) != 2 or "=" not in args[1]:
-            print_error("export: usage: export VAR=value")
-            return 1
-        
-        var, value = args[1].split("=", 1)
-        os.environ[var] = value
+        # Simple environment variable setting - Jake
+        if len(args) == 1:
+            for key, value in os.environ.items():
+                print(f"export {key}='{value}'")
+            return 0
+        for arg in args[1:]:
+            if "=" not in arg:
+                if arg in os.environ:
+                    continue
+                else:
+                    print_error(f"export: invalid argument: {arg}")
+                    return 1
+            else:
+                var, value = arg.split("=", 1)
+                value = value.strip("'\"")
+                os.environ[var] = value
         return 0
-        
+              
     elif command == "unset":
-        # Remove environment variable - Jake will enhance
+        # Remove environment variable - Jake
         if len(args) != 2:
             print_error("unset: usage: unset VAR")
             return 1
@@ -317,8 +351,36 @@ def execute_builtin(args: List[str]) -> int:
         var = args[1]
         if var in os.environ:
             del os.environ[var]
-        return 0
+        return 0  
+
+    elif command == "exit":
+        exit_code = 0
+        if len(args) > 1:
+            try:
+                exit_code = int(args[1])
+            except ValueError:
+                print_error(f"Invalid exit code: {args[1]}")
+                exit_code = 1
+
+        sys.exit(exit_code)
+    
+    elif command == "alias":
+        if not shell_state:
+            print_error("alias: shell state not provided")
+            return 1
         
+        if len(args) == 1:
+            if hasattr(shell_state, 'aliases') and shell_state.aliases:
+                for name, value in shell_state.aliases.items():
+                    print(f"alias {name}='{value}'")
+            return 0
+        elif len(args) == 2 and "=" in args[1]:
+            name, value = args[1].split("=", 1)
+            value = value.strip("'\"")
+            if not hasattr(shell_state, 'aliases'):
+                shell_state.aliases = {}
+            shell_state.aliases[name] = value
+            return 0
     else:
         print_error(f"Unknown built-in command: {command}")
         return 1
