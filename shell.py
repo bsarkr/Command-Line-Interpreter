@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ===============================================================================
-CUSTOM SHELL PROJECT - PYTHON
+CUSTOM SHELL PROJECT - BILASH'S CORE IMPLEMENTATION (PYTHON VERSION)
 ===============================================================================
 
 Team: Bilash Sarkar, Max Hazelton, Jake Gesseck
@@ -35,7 +35,7 @@ STEP 3: Test basic commands
     exit
 
 ===============================================================================
-WHAT'S IMPLEMENTED:
+WHAT'S IMPLEMENTED (BILASH'S RESPONSIBILITIES):
 ===============================================================================
 
 ✓ Core shell loop with prompt display and input handling
@@ -47,7 +47,7 @@ WHAT'S IMPLEMENTED:
 ✓ Integration points for Jake's built-in/features modules
 
 ===============================================================================
-TO BE IMPLEMENTED:
+FOR TEAMMATES - INTEGRATION POINTS:
 ===============================================================================
 
 MAX (Parser & Executor) - Replace these stub functions in utils.py:

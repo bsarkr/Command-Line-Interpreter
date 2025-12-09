@@ -96,7 +96,6 @@ def _expand_variables(token: str) -> str:
 
     return _VAR_PATTERN.sub(repl, token)
 
-
 def _expand_tilde(token: str) -> str:
     """
     Expand ~ and ~user in tokens.
@@ -104,7 +103,6 @@ def _expand_tilde(token: str) -> str:
     if token.startswith("~"):
         return os.path.expanduser(token)
     return token
-
 
 def parse_command(input_str: str) -> List[str]:
     """
@@ -117,10 +115,10 @@ def parse_command(input_str: str) -> List[str]:
       - Tilde expansion (~, ~user)
       - Keeps operators (> < >> | &) as tokens so the shell
         can later implement redirection and pipes.
-    
+
     Args:
         input_str: Raw command line input
-        
+
     Returns:
         List of command tokens
     """
@@ -371,5 +369,3 @@ def add_background_process(pid: int):
     """Add process to background tracking"""
     from signals_mod import add_background_process as add_bg
     add_bg(pid)
-
-
