@@ -8,13 +8,11 @@ Project: Command-Line Interpreter (CLI/Shell)
 FILES INCLUDED:
 ==============
 
-1. shell.py       - Main shell program with core loop (265+ lines)
-2. signals_mod.py - Signal handling module (120+ lines)  
-3. utils.py       - Utility functions, parsing, and command execution (260+ lines)
-4. test_shell.py  - Comprehensive test suite (380+ lines)
-5. README.txt     - This instruction file
-
-Total: 1000+ lines of production-ready Python code
+1. shell.py       - Main shell program with core loop
+2. signals_mod.py - Signal handling module 
+3. utils.py       - Utility functions, parsing, and command execution
+4. test_shell.py  - Test suite
+5. README.txt
 
 QUICK START GUIDE:
 =================
@@ -38,15 +36,15 @@ STEP 3: Try Basic Commands
 BILASH'S COMPLETED RESPONSIBILITIES:
 ===================================
 
-✓ Core shell loop with prompt display and input handling  
-✓ Signal handling for SIGINT (Ctrl+C), SIGTSTP (Ctrl+Z), SIGCHLD  
-✓ Background process management framework  
-✓ Shell state management and cleanup  
-✓ Built-in commands: pwd, cd, help, jobs, history, echo, export, unset  
-✓ Integration points for Max's parser/executor  
-✓ Integration points for Jake's built-in/features modules  
-✓ Comprehensive test suite with 11 test cases  
-✓ Professional error handling and user experience  
+- Core shell loop with prompt display and input handling  
+- Signal handling for SIGINT (Ctrl+C), SIGTSTP (Ctrl+Z), SIGCHLD  
+- Background process management framework  
+- Shell state management and cleanup  
+- Built-in commands: pwd, cd, help, jobs, history, echo, export, unset  
+- Integration points for Max's parser/executor  
+- Integration points for Jake's built-in/features modules  
+- Comprehensive test suite with 11 test cases  
+- Professional error handling and user experience  
 
 TEAM INTEGRATION POINTS:
 =======================
@@ -72,24 +70,12 @@ Completed and integrated in utils.py:
   - Proper exit status propagation  
 
 FOR JAKE (Built-ins & Features):
-• is_builtin_command(command)  
-• execute_builtin(args)  
-• I/O redirection (>, <, >>)  
-• Piping (|)  
-• Alias support  
-• Advanced job control  
-
-PYTHON ADVANTAGES OVER C++:
-===========================
-
-✓ Cleaner, more readable code  
-✓ Automatic memory management  
-✓ Rich standard library: os, signal, subprocess  
-✓ Easier parsing with shlex  
-✓ Exception handling  
-✓ Faster development / debugging  
-✓ Cross-platform compatibility  
-✓ No compilation required  
+- is_builtin_command(command)  
+- execute_builtin(args)  
+- I/O redirection (>, <, >>)  
+- Piping (|)  
+- Alias support  
+- Advanced job control  
 
 ARCHITECTURE HIGHLIGHTS:
 =======================
@@ -212,14 +198,5 @@ exit 0
 exit 5  
 
 Shell prints cleanup messages and exits with specified status.  
-
-PROJECT STATUS:
-==============
-
-✓ Core shell foundation  
-✓ Max’s parser and executor fully integrated  
-✓ Jake’s built-in enhancements ready for extension  
-✓ All tests pass (11/11)  
-✓ Ready for final submission and presentation  
 
 
