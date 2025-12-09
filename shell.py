@@ -74,6 +74,8 @@ class ShellState:
     def __init__(self):
         self.running = True
         self.current_directory = os.getcwd()
+        self.previous_directory = None
+        self.aliases = {}
         self.prompt = ""
         self.last_exit_status = 0
         self.background_processes = []
@@ -151,7 +153,7 @@ def shell_loop():
             
             # Execute command (built-in or external)
             if is_builtin_command(args[0]):
-                status = execute_builtin(args)
+                status = execute_builtin(args, shell_state)
                 shell_state.last_exit_status = status
             else:
                 status = execute_command(args, background)
