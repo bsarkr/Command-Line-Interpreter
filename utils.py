@@ -2,10 +2,7 @@
 """
 Utility Functions Module for Custom Shell
 
-This module contains utility functions and stub implementations for teammate integration:
-- Shell utility functions (prompt, directory management, error handling)
-- Stub implementations for Max's parser/executor functions
-- Stub implementations for Jake's built-in/features functions
+This module contains utility functions
 """
 
 import os
@@ -61,10 +58,6 @@ def set_prompt():
     
     # Create prompt
     shell_state.prompt = f"{username}@{hostname}:{cwd}$"
-
-# ===============================================================================
-# INTEGRATION POINTS FOR TEAMMATES
-# ===============================================================================
 
 # Regex for $VAR, ${VAR}, and $?
 _VAR_PATTERN = re.compile(r"\$(\w+|\{[^}]+\}|\?)")
@@ -154,7 +147,7 @@ def execute_command(args: List[str], background: bool = False) -> int:
         * Registers the PID with add_background_process().
         * Returns 0 if the process started successfully.
 
-    Error conventions:
+    Errors:
         127 -> command not found
         126 -> permission denied
         1   -> generic failure
@@ -219,8 +212,6 @@ def is_builtin_command(command: str) -> bool:
     """
     Check if command is a built-in shell command.
     
-    BASIC IMPLEMENTATION - Jake will expand this with more built-ins.
-    
     Args:
         command: Command name
         
@@ -229,15 +220,13 @@ def is_builtin_command(command: str) -> bool:
     """
     builtins = {
         "exit", "cd", "pwd", "help", "jobs", "history",
-        "echo", "export", "unset", "alias"  # Jake
+        "echo", "export", "unset", "alias" 
     }
     return command in builtins
 
 def execute_builtin(args: List[str], shell_state=None) -> int:
     """
     Execute built-in shell command.
-    
-    BASIC IMPLEMENTATION - Jake will enhance with full feature set.
     
     Args:
         args: Command and arguments
@@ -322,7 +311,6 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
         return 0
         
     elif command == "export":
-        # Simple environment variable setting - Jake
         if len(args) == 1:
             for key, value in os.environ.items():
                 print(f"export {key}='{value}'")
@@ -341,7 +329,6 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
         return 0
               
     elif command == "unset":
-        # Remove environment variable - Jake
         if len(args) != 2:
             print_error("unset: usage: unset VAR")
             return 1
