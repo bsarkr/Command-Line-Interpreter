@@ -9,26 +9,26 @@ Course: Operating Systems
 Project: Command-Line Interpreter (CLI/Shell)
 
 ===============================================================================
-FILES:
+FILES INCLUDED:
 ===============================================================================
 
 1. shell.py       - Main shell program (THIS FILE)  
 2. signals_mod.py - Signal handling module
 3. utils.py       - Utility functions and stub implementations
-4. test_shell.py  - Test program to verify functionality
 
 ===============================================================================
 HOW TO RUN AND TEST:
 ===============================================================================
 
-STEP 1: Test
-    python3 test_shell.py
-
-STEP 2: Run the shell
+STEP 1: Run the shell
     python3 shell.py
 
-STEP 3: Test basic commands
-    'help' for list of commands
+STEP 2: Test basic commands
+    pwd
+    help  
+    cd ~
+    jobs
+    exit
 """
 
 import os
@@ -55,7 +55,7 @@ shell_state = ShellState()
 
 def main():
     """Main entry point for the shell"""
-    print("=== Custom CLI (Python) ===")
+    print("=== CLI (Python) ===")
     print("Team: Bilash, Max, Jake")
     print("Type 'help' for commands or 'exit' to quit.")
     print()
