@@ -120,9 +120,6 @@ BUILT-IN COMMANDS IMPLEMENTED:
 • echo  
 • export VAR=value  
 • unset VAR  
-• exit [code]   
-✓ Jake’s built-in enhancements ready for extension  
-✓ All tests pass (11/11)  
-✓ Ready for final submission and presentation  
+• exit [code]    
 
 
