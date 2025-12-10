@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 """
-Utility Functions Module for Custom Shell
-
-This module contains utility functions and stub implementations for teammate integration:
-- Shell utility functions (prompt, directory management, error handling)
-- Stub implementations for Max's parser/executor functions
-- Stub implementations for Jake's built-in/features functions
+Utility Functions Module for CLI
 """
 
 import os
@@ -17,6 +12,7 @@ import shlex
 import re
 import signal
 from typing import List, Optional
+from shell import shell_state
 
 def print_error(message: str):
     """Print error message to stderr"""
@@ -36,8 +32,6 @@ def get_current_directory() -> str:
 
 def set_prompt():
     """Set the shell prompt in format: user@hostname:path$"""
-    from shell import shell_state
-    
     cwd = shell_state.current_directory
     
     # Get home directory for path shortening
@@ -78,8 +72,6 @@ def _expand_variables(token: str) -> str:
       - ${VAR}
       - $?  (last exit status from shell_state)
     """
-    # Lazy import to avoid circular import at module import time
-    from shell import shell_state
 
     def repl(match: re.Match) -> str:
         name = match.group(1)
@@ -217,6 +209,150 @@ def execute_command(args: List[str], background: bool = False) -> int:
         else:
             return 1
 
+def execute_pipeline(tokens: List[str]) -> int:
+    """Execute Piped Commands"""
+    import subprocess
+
+    commands = []
+    current_cmd = []
+
+    for token in tokens:
+        if token == "|":
+            if current_cmd:
+                commands.append(current_cmd)
+                current_cmd = []
+        else:
+            current_cmd.append(token)
+    if current_cmd:
+        commands.append(current_cmd)
+
+    if len(commands) < 2:
+        print_error("Invalid pipeline command")
+        return 1
+    
+    processes = []
+
+    for i,cmd in enumerate(commands):
+        stdin = processes[i-1].stdout if i > 0 else None
+        stdout = subprocess.PIPE if i < len(commands) - 1 else None
+
+        try: 
+            proc = subprocess.Popen(cmd, stdin=stdin, stdout=stdout, stderr=subprocess.PIPE)
+            processes.append(proc)
+
+            if i > 0:
+                processes[-2].stdout.close()
+        
+        except FileNotFoundError:
+            print_error(f"{cmd[0]}: command not found")
+            return 127
+
+    for proc in processes:
+        proc.wait()
+
+
+    return processes[-1].returncode if processes else 1
+
+def execute_with_redirection(tokens: List[str]) -> int:
+    """Execute Commands with I/O Redirection"""
+    import subprocess
+    
+    cmd_tokens = []
+    stdin_file = None
+    stdout_file = None
+    append_mode = False
+
+    i = 0
+    while i < len(tokens):
+        if tokens[i] == '>':
+            stdout_file = tokens[i+1]
+            append_mode = False
+            i += 2
+        elif tokens[i] == '>>':
+            stdout_file = tokens[i+1]
+            append_mode = True
+            i += 2
+        elif tokens[i] == '<':
+            stdin_file = tokens[i+1]
+            i += 2
+        else:
+            cmd_tokens.append(tokens[i])
+            i += 1
+    
+    if not cmd_tokens:
+        print_error("No command specified for redirection")
+        return 1
+    
+    try: 
+        stdin_handle = open(stdin_file, 'r') if stdin_file else None
+
+        if stdout_file:
+            mode = 'a' if append_mode else 'w'
+            stdout_handle = open(stdout_file, mode)
+        else:
+            stdout_handle = None
+
+        if is_builtin_command(cmd_tokens[0]):
+            original_stdout = sys.stdout
+            original_stdin = sys.stdin
+
+            try:
+                if stdout_handle:
+                    sys.stdout = stdout_handle
+                if stdin_handle:
+                    sys.stdin = stdin_handle
+
+                result = execute_builtin(cmd_tokens, shell_state)
+            finally:
+                sys.stdout = original_stdout
+                sys.stdin = original_stdin
+            return result
+        else:
+            result = subprocess.run(
+                cmd_tokens,
+                stdin=stdin_handle,
+                stdout=stdout_handle,
+                stderr=subprocess.PIPE
+            )
+            return result.returncode
+    
+    except FileNotFoundError as e:
+        print_error(f"Redirection error: {e}")
+        return 1
+    finally:
+        if stdin_handle:
+            stdin_handle.close()
+        if stdout_handle:
+            stdout_handle.close()
+        
+def dispatch_command(tokens: List[str], shell_state=None) -> int:
+    """
+    Dispatch command to built-in or external executor.
+
+    Args:
+        tokens: Parsed command tokens
+    """
+    if not tokens:
+        return 1
+    
+    background = False
+    if tokens and tokens[-1] == "&":
+        background = True
+        tokens = tokens[:-1]  # Remove '&' from tokens
+
+    if '|' in tokens:
+        return execute_pipeline(tokens)
+    
+    if any(op in tokens for op in ('>', '>>', '<')):
+        return execute_with_redirection(tokens)
+    
+    if is_builtin_command(tokens[0]):
+        return execute_builtin(tokens, shell_state)
+    else:
+        return execute_command(tokens, background)
+    
+    
+
 def is_builtin_command(command: str) -> bool:
     """
     Check if command is a built-in shell command.
@@ -231,7 +367,7 @@ def is_builtin_command(command: str) -> bool:
     """
     builtins = {
         "exit", "cd", "pwd", "help", "jobs", "history",
-        "echo", "export", "unset", "alias"  # Jake
+        "echo", "export", "unset", "alias"
     }
     return command in builtins
 
@@ -303,7 +439,7 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
         return 0
         
     elif command == "history":
-        show_history()
+        show_history(shell_state)
         return 0
         
     elif command == "echo":
@@ -324,7 +460,6 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
         return 0
         
     elif command == "export":
-        # Simple environment variable setting - Jake
         if len(args) == 1:
             for key, value in os.environ.items():
                 print(f"export {key}='{value}'")
@@ -343,7 +478,6 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
         return 0
               
     elif command == "unset":
-        # Remove environment variable - Jake
         if len(args) != 2:
             print_error("unset: usage: unset VAR")
             return 1
@@ -391,26 +525,30 @@ def show_help():
 Available commands:
   exit [code]     - Exit the shell with optional exit code
   cd [directory]  - Change current directory (default: home)
+  cd ~            - Change to previous directory
   pwd             - Print current working directory
   help            - Show this help message
   jobs            - List active background jobs
   history         - Show command history
-  echo [text]     - Print text to stdout
-  export VAR=val  - Set environment variable
+  echo [-n] [text]- Print text to stdout (-n: no newline)
+  export [VAR=val]- Set environment variable or list all
   unset VAR       - Remove environment variable
+  alias [name=cmd]- Create or list command aliases
 
 Special operators:
   &               - Run command in background
+  |               - Pipe output between commands
+  >, >>, <        - I/O redirection
   Ctrl+C          - Interrupt (doesn't exit shell)
   Ctrl+D          - Exit shell
-  
-Note: I/O redirection (>, <, |) will be implemented by Jake.
 """
     print(help_text.strip())
 
-def show_history():
+def show_history(shell_state=None):
     """Display command history"""
-    from shell import shell_state
+    if not shell_state or not hasattr(shell_state, 'command_history'):
+        print("No command history available.")
+        return
     
     if not shell_state.command_history:
         print("No commands in history.")

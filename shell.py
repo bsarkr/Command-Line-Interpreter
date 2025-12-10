@@ -9,56 +9,26 @@ Course: Operating Systems
 Project: Command-Line Interpreter (CLI/Shell)
 
 ===============================================================================
-PURE PYTHON FILES INCLUDED:
+FILES INCLUDED:
 ===============================================================================
 
 1. shell.py       - Main shell program (THIS FILE)  
 2. signals_mod.py - Signal handling module
 3. utils.py       - Utility functions and stub implementations
-4. test_shell.py  - Test program to verify functionality
 
 ===============================================================================
 HOW TO RUN AND TEST:
 ===============================================================================
 
-STEP 1: Test your implementation
-    python3 test_shell.py
-
-STEP 2: Run the shell
+STEP 1: Run the shell
     python3 shell.py
 
-STEP 3: Test basic commands
+STEP 2: Test basic commands
     pwd
     help  
     cd ~
     jobs
     exit
-
-===============================================================================
-WHAT'S IMPLEMENTED:
-===============================================================================
-
-✓ Core shell loop with prompt display and input handling
-✓ Signal handling for SIGINT (Ctrl+C), SIGTSTP (Ctrl+Z), SIGCHLD
-✓ Background process management framework  
-✓ Shell state management and cleanup
-✓ Basic built-in commands: pwd, cd, help, jobs, exit
-✓ Integration points for Max's parser/executor modules
-✓ Integration points for Jake's built-in/features modules
-
-===============================================================================
-TO BE IMPLEMENTED:
-===============================================================================
-
-MAX (Parser & Executor) - Replace these stub functions in utils.py:
-• parse_command(input_str) -> List[str]
-• execute_command(args, background=False) -> int
-
-JAKE (Built-ins & Features) - Enhance these functions in utils.py:  
-• is_builtin_command(command) -> bool
-• execute_builtin(args) -> int
-• Add I/O redirection and piping functionality
-
 ===============================================================================
 """
 
@@ -86,7 +56,7 @@ shell_state = ShellState()
 
 def main():
     """Main entry point for the shell"""
-    print("=== Custom Shell v1.0 (Python) ===")
+    print("=== CLI (Python) ===")
     print("Team: Bilash, Max, Jake")
     print("Type 'help' for commands or 'exit' to quit.")
     print()
