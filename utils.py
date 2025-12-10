@@ -56,10 +56,6 @@ def set_prompt():
     # Create prompt
     shell_state.prompt = f"{username}@{hostname}:{cwd}$"
 
-# ===============================================================================
-# INTEGRATION POINTS FOR TEAMMATES
-# ===============================================================================
-
 # Regex for $VAR, ${VAR}, and $?
 _VAR_PATTERN = re.compile(r"\$(\w+|\{[^}]+\}|\?)")
 
@@ -88,7 +84,6 @@ def _expand_variables(token: str) -> str:
 
     return _VAR_PATTERN.sub(repl, token)
 
-
 def _expand_tilde(token: str) -> str:
     """
     Expand ~ and ~user in tokens.
@@ -96,7 +91,6 @@ def _expand_tilde(token: str) -> str:
     if token.startswith("~"):
         return os.path.expanduser(token)
     return token
-
 
 def parse_command(input_str: str) -> List[str]:
     """
@@ -109,10 +103,10 @@ def parse_command(input_str: str) -> List[str]:
       - Tilde expansion (~, ~user)
       - Keeps operators (> < >> | &) as tokens so the shell
         can later implement redirection and pipes.
-    
+
     Args:
         input_str: Raw command line input
-        
+
     Returns:
         List of command tokens
     """
@@ -148,7 +142,7 @@ def execute_command(args: List[str], background: bool = False) -> int:
         * Registers the PID with add_background_process().
         * Returns 0 if the process started successfully.
 
-    Error conventions:
+    Errors:
         127 -> command not found
         126 -> permission denied
         1   -> generic failure
@@ -357,8 +351,6 @@ def is_builtin_command(command: str) -> bool:
     """
     Check if command is a built-in shell command.
     
-    BASIC IMPLEMENTATION - Jake will expand this with more built-ins.
-    
     Args:
         command: Command name
         
@@ -374,8 +366,6 @@ def is_builtin_command(command: str) -> bool:
 def execute_builtin(args: List[str], shell_state=None) -> int:
     """
     Execute built-in shell command.
-    
-    BASIC IMPLEMENTATION - Jake will enhance with full feature set.
     
     Args:
         args: Command and arguments
@@ -571,5 +561,3 @@ def add_background_process(pid: int):
     """Add process to background tracking"""
     from signals_mod import add_background_process as add_bg
     add_bg(pid)
-
-

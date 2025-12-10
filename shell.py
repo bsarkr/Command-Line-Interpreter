@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ===============================================================================
-CUSTOM SHELL PROJECT - PYTHON
+CUSTOM SHELL PROJECT - BILASH'S CORE IMPLEMENTATION (PYTHON VERSION)
 ===============================================================================
 
 Team: Bilash Sarkar, Max Hazelton, Jake Gesseck
@@ -29,7 +29,6 @@ STEP 2: Test basic commands
     cd ~
     jobs
     exit
-===============================================================================
 """
 
 import os
