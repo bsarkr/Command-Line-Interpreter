@@ -1,3 +1,4 @@
+# utils.py
 #!/usr/bin/env python3
 """
 Utility Functions Module for CLI
@@ -12,15 +13,17 @@ import shlex
 import re
 import signal
 from typing import List, Optional
-from shell import shell_state
+
 
 def print_error(message: str):
     """Print error message to stderr"""
     print(f"shell: error: {message}", file=sys.stderr)
 
+
 def print_info(message: str):
     """Print info message to stdout"""
     print(f"shell: {message}")
+
 
 def get_current_directory() -> str:
     """Get current working directory"""
@@ -30,34 +33,40 @@ def get_current_directory() -> str:
         print_error(f"getcwd: {e}")
         return "/"
 
+
 def set_prompt():
     """Set the shell prompt in format: user@hostname:path$"""
+    # Import here to avoid circular import
+    from shell import shell_state
+
     cwd = shell_state.current_directory
-    
+
     # Get home directory for path shortening
     home = os.path.expanduser("~")
     if cwd == home:
         cwd = "~"
     elif cwd.startswith(home + "/"):
         cwd = "~" + cwd[len(home):]
-    
+
     # Get username
     try:
         username = pwd.getpwuid(os.getuid()).pw_name
     except (KeyError, OSError):
         username = os.getenv("USER", "user")
-    
+
     # Get hostname
     try:
         hostname = socket.gethostname()
     except OSError:
         hostname = "localhost"
-    
+
     # Create prompt
     shell_state.prompt = f"{username}@{hostname}:{cwd}$"
 
+
 # Regex for $VAR, ${VAR}, and $?
 _VAR_PATTERN = re.compile(r"\$(\w+|\{[^}]+\}|\?)")
+
 
 def _expand_variables(token: str) -> str:
     """
@@ -68,6 +77,8 @@ def _expand_variables(token: str) -> str:
       - ${VAR}
       - $?  (last exit status from shell_state)
     """
+    # Import here to avoid circular import
+    from shell import shell_state
 
     def repl(match: re.Match) -> str:
         name = match.group(1)
@@ -84,6 +95,7 @@ def _expand_variables(token: str) -> str:
 
     return _VAR_PATTERN.sub(repl, token)
 
+
 def _expand_tilde(token: str) -> str:
     """
     Expand ~ and ~user in tokens.
@@ -91,6 +103,7 @@ def _expand_tilde(token: str) -> str:
     if token.startswith("~"):
         return os.path.expanduser(token)
     return token
+
 
 def parse_command(input_str: str) -> List[str]:
     """
@@ -129,6 +142,7 @@ def parse_command(input_str: str) -> List[str]:
     except ValueError as e:
         print_error(f"Parse error: {e}")
         return []
+
 
 def execute_command(args: List[str], background: bool = False) -> int:
     """
@@ -203,6 +217,7 @@ def execute_command(args: List[str], background: bool = False) -> int:
         else:
             return 1
 
+
 def execute_pipeline(tokens: List[str]) -> int:
     """Execute Piped Commands"""
     import subprocess
@@ -223,20 +238,21 @@ def execute_pipeline(tokens: List[str]) -> int:
     if len(commands) < 2:
         print_error("Invalid pipeline command")
         return 1
-    
+
     processes = []
 
-    for i,cmd in enumerate(commands):
+    for i, cmd in enumerate(commands):
         stdin = processes[i-1].stdout if i > 0 else None
         stdout = subprocess.PIPE if i < len(commands) - 1 else None
 
-        try: 
-            proc = subprocess.Popen(cmd, stdin=stdin, stdout=stdout, stderr=subprocess.PIPE)
+        try:
+            proc = subprocess.Popen(
+                cmd, stdin=stdin, stdout=stdout, stderr=subprocess.PIPE)
             processes.append(proc)
 
             if i > 0:
                 processes[-2].stdout.close()
-        
+
         except FileNotFoundError:
             print_error(f"{cmd[0]}: command not found")
             return 127
@@ -244,13 +260,13 @@ def execute_pipeline(tokens: List[str]) -> int:
     for proc in processes:
         proc.wait()
 
-
     return processes[-1].returncode if processes else 1
+
 
 def execute_with_redirection(tokens: List[str]) -> int:
     """Execute Commands with I/O Redirection"""
     import subprocess
-    
+
     cmd_tokens = []
     stdin_file = None
     stdout_file = None
@@ -272,12 +288,12 @@ def execute_with_redirection(tokens: List[str]) -> int:
         else:
             cmd_tokens.append(tokens[i])
             i += 1
-    
+
     if not cmd_tokens:
         print_error("No command specified for redirection")
         return 1
-    
-    try: 
+
+    try:
         stdin_handle = open(stdin_file, 'r') if stdin_file else None
 
         if stdout_file:
@@ -296,7 +312,7 @@ def execute_with_redirection(tokens: List[str]) -> int:
                 if stdin_handle:
                     sys.stdin = stdin_handle
 
-                result = execute_builtin(cmd_tokens, shell_state)
+                result = execute_builtin(cmd_tokens)
             finally:
                 sys.stdout = original_stdout
                 sys.stdin = original_stdin
@@ -309,7 +325,7 @@ def execute_with_redirection(tokens: List[str]) -> int:
                 stderr=subprocess.PIPE
             )
             return result.returncode
-    
+
     except FileNotFoundError as e:
         print_error(f"Redirection error: {e}")
         return 1
@@ -318,8 +334,9 @@ def execute_with_redirection(tokens: List[str]) -> int:
             stdin_handle.close()
         if stdout_handle:
             stdout_handle.close()
-        
-def dispatch_command(tokens: List[str], shell_state=None) -> int:
+
+
+def dispatch_command(tokens: List[str]) -> int:
     """
     Dispatch command to built-in or external executor.
 
@@ -328,7 +345,7 @@ def dispatch_command(tokens: List[str], shell_state=None) -> int:
     """
     if not tokens:
         return 1
-    
+
     background = False
     if tokens and tokens[-1] == "&":
         background = True
@@ -336,24 +353,23 @@ def dispatch_command(tokens: List[str], shell_state=None) -> int:
 
     if '|' in tokens:
         return execute_pipeline(tokens)
-    
+
     if any(op in tokens for op in ('>', '>>', '<')):
         return execute_with_redirection(tokens)
-    
+
     if is_builtin_command(tokens[0]):
-        return execute_builtin(tokens, shell_state)
+        return execute_builtin(tokens)
     else:
         return execute_command(tokens, background)
-    
-    
+
 
 def is_builtin_command(command: str) -> bool:
     """
     Check if command is a built-in shell command.
-    
+
     Args:
         command: Command name
-        
+
     Returns:
         True if it's a built-in command
     """
@@ -363,26 +379,29 @@ def is_builtin_command(command: str) -> bool:
     }
     return command in builtins
 
-def execute_builtin(args: List[str], shell_state=None) -> int:
+
+def execute_builtin(args: List[str]) -> int:
     """
     Execute built-in shell command.
-    
+
     Args:
         args: Command and arguments
-        
+
     Returns:
         Exit status (0 for success, non-zero for error)
     """
     if not args:
         return 1
-    
+
     command = args[0]
-    
+    # Import here to avoid circular import
+    from shell import shell_state
+
     if command == "pwd":
         print(get_current_directory())
         return 0
-        
-    elif command == "cd": # Change directory
+
+    elif command == "cd":  # Change directory
         if len(args) > 2:
             print_error("cd: too many arguments")
             return 1
@@ -399,17 +418,16 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
         else:
             # No argument, go to home directory
             target_dir = os.path.expanduser("~")
-        
+
         try:
-            if shell_state:
+            if hasattr(shell_state, 'previous_directory'):
                 shell_state.previous_directory = shell_state.current_directory
 
             target_dir = os.path.expanduser(target_dir)
             target_dir = os.path.expandvars(target_dir)
-            
+
             os.chdir(target_dir)
-            if shell_state:
-                shell_state.current_directory = get_current_directory()
+            shell_state.current_directory = get_current_directory()
 
             return 0
         except OSError as e:
@@ -418,20 +436,20 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
             else:
                 print_error(f"cd: {e}")
             return 1
-            
+
     elif command == "help":
         show_help()
         return 0
-        
+
     elif command == "jobs":
         from signals_mod import print_background_jobs
         print_background_jobs()
         return 0
-        
+
     elif command == "history":
-        show_history(shell_state)
+        show_history()
         return 0
-        
+
     elif command == "echo":
         echo_args = args[1:]
         newline = True
@@ -439,7 +457,7 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
         if echo_args and echo_args[0] == "-n":
             newline = False
             echo_args = echo_args[1:]
-        
+
         output = " ".join(echo_args) if echo_args else ""
 
         if newline:
@@ -448,7 +466,7 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
             print(output, end="")
 
         return 0
-        
+
     elif command == "export":
         if len(args) == 1:
             for key, value in os.environ.items():
@@ -466,33 +484,18 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
                 value = value.strip("'\"")
                 os.environ[var] = value
         return 0
-              
+
     elif command == "unset":
         if len(args) != 2:
             print_error("unset: usage: unset VAR")
             return 1
-        
+
         var = args[1]
         if var in os.environ:
             del os.environ[var]
-        return 0  
+        return 0
 
-    elif command == "exit":
-        exit_code = 0
-        if len(args) > 1:
-            try:
-                exit_code = int(args[1])
-            except ValueError:
-                print_error(f"Invalid exit code: {args[1]}")
-                exit_code = 1
-
-        sys.exit(exit_code)
-    
     elif command == "alias":
-        if not shell_state:
-            print_error("alias: shell state not provided")
-            return 1
-        
         if len(args) == 1:
             if hasattr(shell_state, 'aliases') and shell_state.aliases:
                 for name, value in shell_state.aliases.items():
@@ -505,9 +508,14 @@ def execute_builtin(args: List[str], shell_state=None) -> int:
                 shell_state.aliases = {}
             shell_state.aliases[name] = value
             return 0
+        else:
+            print_error("alias: usage: alias [name=value]")
+            return 1
+
     else:
         print_error(f"Unknown built-in command: {command}")
         return 1
+
 
 def show_help():
     """Display help information"""
@@ -515,7 +523,7 @@ def show_help():
 Available commands:
   exit [code]     - Exit the shell with optional exit code
   cd [directory]  - Change current directory (default: home)
-  cd ~            - Change to previous directory
+  cd -            - Change to previous directory
   pwd             - Print current working directory
   help            - Show this help message
   jobs            - List active background jobs
@@ -534,28 +542,35 @@ Special operators:
 """
     print(help_text.strip())
 
-def show_history(shell_state=None):
+
+def show_history():
     """Display command history"""
-    if not shell_state or not hasattr(shell_state, 'command_history'):
+    # Import here to avoid circular import
+    from shell import shell_state
+
+    if not hasattr(shell_state, 'command_history'):
         print("No command history available.")
         return
-    
+
     if not shell_state.command_history:
         print("No commands in history.")
         return
-    
+
     print("Command history:")
-    for i, cmd in enumerate(shell_state.command_history[-20:], 1):  # Show last 20
+    # Show last 20
+    for i, cmd in enumerate(shell_state.command_history[-20:], 1):
         print(f"  {i:2d}  {cmd}")
 
 # ===============================================================================
 # BACKGROUND PROCESS UTILITIES
 # ===============================================================================
 
+
 def handle_background_processes():
     """Handle background process management - called from main loop"""
     from signals_mod import handle_background_processes as handle_bg
     handle_bg()
+
 
 def add_background_process(pid: int):
     """Add process to background tracking"""
